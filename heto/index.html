@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Meme Date Program</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+<style>
+body {
+  background: linear-gradient(135deg, #ff9a9e, #fad0c4, #fad0c4);
+  background-size: 300% 300%;
+  animation: gradientBG 8s ease infinite;
+}
+@keyframes gradientBG {
+  0% {background-position: 0% 50%;}
+  50% {background-position: 100% 50%;}
+  100% {background-position: 0% 50%;}
+}
+#noBtn { position: relative; transition: transform 0.3s ease; z-index: 50; }
+.calendar-day { padding: 0.5rem; font-size: 0.85rem; border-radius: 50%; transition: background-color 0.2s; }
+.calendar-day:hover { background-color: #ffe4e6; cursor: pointer; }
+.selected-day { background-color: #22c55e !important; color: white !important; }
+@media (max-width: 425px) {
+  h1 { font-size: 1.3rem !important; }
+  button { padding: 0.5rem 0.8rem !important; font-size: 0.85rem !important; }
+  #step1 .flex button { width: 100% !important; }
+  .calendar-day { font-size: 0.6rem !important; padding: 0.25rem !important; min-width: 28px; min-height: 28px; }
+}
+</style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen font-sans overflow-hidden px-2 sm:px-4">
+<!-- Step 1 -->
+<div id="step1" class="text-center w-full max-w-md sm:max-w-lg">
+  <h1 class="text-2xl sm:text-4xl font-bold mb-4 text-white drop-shadow-lg animate-bounce">
+    Do you want to go on a date with me? ❤️
+  </h1>
+  <img src="https://media.giphy.com/media/yBbytEQSMFmu591ybD/giphy.gif"
+       class="mx-auto rounded-xl shadow-lg mb-6 w-full max-w-xs">
+  <div class="flex flex-col sm:flex-row justify-center items-center gap-3">
+    <button id="yesBtn" class="w-full sm:w-40 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-full font-bold shadow-lg transform hover:scale-110 transition">Yes 😍</button>
+    <button id="noBtn" class="w-full sm:w-40 px-6 py-3 bg-red-500 text-white rounded-full font-bold shadow-lg">No 😜</button>
+  </div>
+</div>
+
+<!-- Step 2 -->
+<div id="step2" class="hidden text-center w-full max-w-md sm:max-w-lg mx-auto">
+  <h1 class="text-2xl sm:text-4xl font-bold mb-4 text-white drop-shadow-lg">Pick our special date!</h1>
+  <img src="https://media.giphy.com/media/11sBLVxNs7v6WA/giphy.gif"
+       class="mx-auto mb-4 rounded-xl shadow-lg w-60">
+
+  <!-- Name Input -->
+  <input id="userNameInput" type="text" placeholder="Enter your name 💌"
+         class="mb-4 w-full px-4 py-2 rounded-full border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400">
+
+  <div class="bg-white rounded-2xl shadow-2xl p-4">
+    <div class="flex justify-between items-center mb-3">
+      <button id="prevMonth" class="text-gray-500 hover:text-gray-700 text-lg">&lt;</button>
+      <h2 id="monthYear" class="font-bold text-base"></h2>
+      <button id="nextMonth" class="text-gray-500 hover:text-gray-700 text-lg">&gt;</button>
+    </div>
+    <div class="grid grid-cols-7 text-center font-bold mb-2 text-xs">
+      <div class="text-red-500">SUN</div><div class="text-green-500">MON</div><div class="text-green-500">TUE</div>
+      <div class="text-green-500">WED</div><div class="text-green-500">THU</div><div class="text-green-500">FRI</div><div class="text-green-500">SAT</div>
+    </div>
+    <div id="calendarDays" class="grid grid-cols-7 gap-1 text-center"></div>
+  </div>
+  <button id="dateBtn" class="mt-4 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full font-bold shadow-lg transform hover:scale-110 transition">Confirm Date 💖</button>
+</div>
+
+<!-- Step 3 -->
+<div id="step3" class="hidden text-center px-2">
+  <div class="bg-white p-4 rounded-2xl shadow-2xl inline-block w-full max-w-3xl">
+    <h1 class="text-2xl sm:text-4xl font-bold mb-4 text-pink-600">Yay! Our date is set! 🥰</h1>
+    <p id="chosenDate" class="mb-4 text-base text-gray-700"></p>
+    <video id="resultVideo" class="mx-auto rounded-xl shadow-lg w-full max-w-[600px]" autoplay loop muted>
+      <source src="https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.mp4" type="video/mp4">
+    </video>
+  </div>
+</div>
+
+<script>
+// Initialize EmailJS
+(function() {
+  emailjs.init("Gh2D7Hg4Y7ttbN6nT"); // <-- Replace with your EmailJS Public Key
+})();
+
+const step1 = document.getElementById('step1');
+const step2 = document.getElementById('step2');
+const step3 = document.getElementById('step3');
+const noBtn = document.getElementById('noBtn');
+const yesBtn = document.getElementById('yesBtn');
+const dateBtn = document.getElementById('dateBtn');
+const chosenDate = document.getElementById('chosenDate');
+const monthYear = document.getElementById('monthYear');
+const calendarDays = document.getElementById('calendarDays');
+
+let selectedDate = null;
+let today = new Date();
+let currentMonth = today.getMonth();
+let currentYear = today.getFullYear();
+
+// No button runaway
+noBtn.addEventListener('mouseover', () => {
+  const maxX = Math.max(window.innerWidth - noBtn.offsetWidth - 20, 20);
+  const maxY = Math.max(window.innerHeight - noBtn.offsetHeight - 20, 20);
+  noBtn.style.position = 'absolute';
+  noBtn.style.left = `${Math.floor(Math.random() * maxX)}px`;
+  noBtn.style.top = `${Math.floor(Math.random() * maxY)}px`;
+});
+
+// Yes button click
+yesBtn.addEventListener('click', () => {
+  step1.classList.add('hidden');
+  step2.classList.remove('hidden');
+  renderCalendar();
+});
+
+// Render calendar
+function renderCalendar() {
+  const firstDay = new Date(currentYear, currentMonth).getDay();
+  const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const prevLastDate = new Date(currentYear, currentMonth, 0).getDate();
+
+  monthYear.textContent = `${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long' })} - ${currentYear}`;
+  calendarDays.innerHTML = '';
+
+  for (let i = firstDay; i > 0; i--) {
+    calendarDays.innerHTML += `<div class="text-gray-400">${prevLastDate - i + 1}</div>`;
+  }
+
+  for (let day = 1; day <= lastDate; day++) {
+    let dayClass = "calendar-day";
+    let dateObj = new Date(currentYear, currentMonth, day);
+    if (dateObj.toDateString() === new Date().toDateString()) {
+      dayClass += " border border-pink-400";
+    }
+    calendarDays.innerHTML += `<div class="${dayClass}" data-date="${dateObj}">${day}</div>`;
+  }
+
+  document.querySelectorAll('.calendar-day').forEach(d => {
+    d.addEventListener('click', () => {
+      document.querySelectorAll('.calendar-day').forEach(el => el.classList.remove('selected-day'));
+      d.classList.add('selected-day');
+      selectedDate = new Date(d.dataset.date);
+    });
+  });
+}
+
+document.getElementById('prevMonth').addEventListener('click', () => {
+  currentMonth--;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  today = new Date(currentYear, currentMonth);
+  renderCalendar();
+});
+
+document.getElementById('nextMonth').addEventListener('click', () => {
+  currentMonth++;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  today = new Date(currentYear, currentMonth);
+  renderCalendar();
+});
+dateBtn.addEventListener('click', () => {
+  const userName = document.getElementById("userNameInput").value.trim();
+  
+  if (!selectedDate) {
+    alert('Please select a date first!');
+    return;
+  }
+  if (!userName) {
+    alert('Please enter your name!');
+    return;
+  }
+
+  step2.classList.add('hidden');
+  step3.classList.remove('hidden');
+  chosenDate.textContent = `Our date is on ${selectedDate.toDateString()} 💖`;
+
+  // Send email via EmailJS
+  emailjs.send("service_46nkxeq", "template_50mkmja", {
+    name: userName, // Matches {{name}} in template
+    date_time: new Date().toLocaleString(), // Matches {{date_time}}
+    selected_date: selectedDate.toDateString() // Matches {{selected_date}}
+  })
+  .then(() => {
+    console.log("Email sent!");
+  })
+  .catch(err => console.error("Email send failed:", err));
+});
+
+</script>
+</body>
+</html>
